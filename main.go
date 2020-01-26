@@ -43,7 +43,7 @@ func main() {
 	r.GET("/users", app.getAllUsers)
 	r.GET("/users/:id/likes", app.getIncomingLikes)
 	r.PUT("/users/:id", app.editUser)
-	r.POST("/likes", app.newLike)
+	r.POST("/users/:id/ratings", app.newRating)
 
 	err := r.Run(fmt.Sprintf(":%s", os.Getenv("PORT")))
 	if err != nil {
@@ -116,21 +116,34 @@ func (app *appContext) editUser(c *gin.Context) {
 }
 
 // add a new like entry. Does not validate if user ids exist within the system
-func (app *appContext) newLike(c *gin.Context) {
-	var l Like
+func (app *appContext) newRating(c *gin.Context) {
+	id := c.Param("id")
+	var r Rating
 
-	if err := c.ShouldBindJSON(&l); err != nil {
-		log.Printf("error binding data to Like object %s\n", err)
+	if err := c.ShouldBindJSON(&r); err != nil {
+		log.Printf("error binding data to Rating object %s\n", err)
 		errorResponse(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	if l.UserID == "" || l.LikeUserID == "" {
-		errorResponse(c, http.StatusBadRequest, errors.New("missing one or more required fields: userId, likeUserId"))
+	if r.ToUserID == "" {
+		errorResponse(c, http.StatusBadRequest, errors.New("missing one or more required fields: toUserId, type"))
 		return
 	}
 
-	if err := l.Save(app.DB); err != nil {
+	if r.Type != LIKE && r.Type != BLOCK && r.Type != REPORT {
+		errorResponse(c, http.StatusBadRequest, errors.New(fmt.Sprintf("type must be either %s, %s, or %s", LIKE, BLOCK, REPORT)))
+		return
+	}
+
+	if r.Type == REPORT && r.Reason == "" {
+		errorResponse(c, http.StatusBadRequest, errors.New("reason cannot be blank"))
+		return
+	}
+
+	r.FromUserID = id
+
+	if err := r.Save(app.DB); err != nil {
 		errorResponse(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -146,7 +159,13 @@ func errorResponse(c *gin.Context, statusCode int, err error) {
 	})
 }
 
+// helper function to print json into console
 func prettyPrint(i interface{}) {
 	b, _ := json.MarshalIndent(i, "", "    ")
 	fmt.Println(string(b))
 }
+
+// in order to do matches... each of them must like each other.
+// jennifer likes michael
+// michael likes jennifer
+// how do i know its a match?

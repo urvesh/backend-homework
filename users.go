@@ -96,7 +96,13 @@ func FindUserByID(db *DB, id string) (*User, error) {
 
 // FindIncomingLikes finds all the users who have liked the given userId
 func FindIncomingLikes(db *DB, userId string) ([]*User, error) {
-	likes, err := FindLikesByUserID(db, userId)
+	p := RatingParams{
+		Filter: Rating{
+			ToUserID: userId,
+			Type:     LIKE,
+		},
+	}
+	likes, err := FindRatings(db, p)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +116,7 @@ func FindIncomingLikes(db *DB, userId string) ([]*User, error) {
 
 	// go through found likes and populate it with user data
 	for _, v := range likes {
-		u, err := FindUserByID(db, v.UserID)
+		u, err := FindUserByID(db, v.FromUserID)
 		if err != nil {
 			return nil, err
 		}

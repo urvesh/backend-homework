@@ -17,4 +17,18 @@ Mongo conf location:
 
 
 ### Starting Data
-4
+
+
+
+### EC2 Setup Notes
+
+https://docs.mongodb.com/manual/tutorial/install-mongodb-on-amazon/
+https://hackernoon.com/deploying-a-go-application-on-aws-ec2-76390c09c2c5
+
+
+```bash
+sudo yum install -y git
+sudo yum install -y golang
+```
+
+

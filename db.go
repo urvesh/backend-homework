@@ -133,60 +133,69 @@ func PopulateDatabase(db *DB) {
 	// Alexis likes Michael
 	// Alexis likes Andrew
 	// {Everyone} likes Jennifer
-	likes := []*Like{
+	likes := []*Rating{
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[1].ID,
-			LikeUserID:  users[2].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[1].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[2].ID,
+			Type:        LIKE,
 		},
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[3].ID,
-			LikeUserID:  users[2].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[3].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[2].ID,
+			Type:        LIKE,
 		},
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[4].ID,
-			LikeUserID:  users[3].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[4].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[3].ID,
+			Type:        LIKE,
 		},
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[4].ID,
-			LikeUserID:  users[5].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[4].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[5].ID,
+			Type:        LIKE,
 		},
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[1].ID,
-			LikeUserID:  users[0].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[1].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[0].ID,
+			Type:        LIKE,
 		},
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[2].ID,
-			LikeUserID:  users[0].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[2].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[0].ID,
+			Type:        LIKE,
 		},
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[3].ID,
-			LikeUserID:  users[0].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[3].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[0].ID,
+			Type:        LIKE,
 		},
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[4].ID,
-			LikeUserID:  users[0].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[4].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[0].ID,
+			Type:        LIKE,
 		},
 		{
-			ID:          primitive.NewObjectID().Hex(),
-			UserID:      users[5].ID,
-			LikeUserID:  users[0].ID,
 			CreatedDate: time.Now(),
+			FromUserID:  users[5].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[0].ID,
+			Type:        LIKE,
 		},
 	}
 
@@ -196,8 +205,8 @@ func PopulateDatabase(db *DB) {
 		li = append(li, v)
 	}
 
-	likesColl := db.MongoClient.Collection("likes")
-	if _, err := likesColl.InsertMany(ctx, li); err != nil {
+	ratingsColl := db.MongoClient.Collection("ratings")
+	if _, err := ratingsColl.InsertMany(ctx, li); err != nil {
 		log.Fatal("error inserting likes: ", err)
 	}
 }
