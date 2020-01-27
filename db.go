@@ -133,6 +133,7 @@ func PopulateDatabase(db *DB) {
 	// Alexis likes Michael
 	// Alexis likes Andrew
 	// {Everyone} likes Jennifer
+	// Jennifer likes Michael (match)
 	likes := []*Rating{
 		{
 			CreatedDate: time.Now(),
@@ -195,6 +196,13 @@ func PopulateDatabase(db *DB) {
 			FromUserID:  users[5].ID,
 			ID:          primitive.NewObjectID().Hex(),
 			ToUserID:    users[0].ID,
+			Type:        LIKE,
+		},
+		{
+			CreatedDate: time.Now(),
+			FromUserID:  users[0].ID,
+			ID:          primitive.NewObjectID().Hex(),
+			ToUserID:    users[3].ID,
 			Type:        LIKE,
 		},
 	}

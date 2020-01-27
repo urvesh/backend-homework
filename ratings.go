@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -25,12 +26,12 @@ type Rating struct {
 }
 
 type RatingParams struct {
-	Filter Rating
+	Filter *Rating
 	// Projection
 }
 
 // look for all the users that has took an action against this userId
-func FindRatings(db *DB, params RatingParams) ([]*Rating, error) {
+func FindRatings(db *DB, params *RatingParams) ([]*Rating, error) {
 	coll := db.MongoClient.Collection("ratings")
 	ctx := context.Background()
 
@@ -38,8 +39,7 @@ func FindRatings(db *DB, params RatingParams) ([]*Rating, error) {
 
 	cur, err := coll.Find(ctx, params.Filter)
 	if err != nil {
-		log.Println("error finding ratings from mongo: ", err)
-		return nil, err
+		return nil, NewErrorf("error finding ratings from mongo: %s", err)
 	}
 
 	defer cur.Close(ctx)
@@ -47,8 +47,7 @@ func FindRatings(db *DB, params RatingParams) ([]*Rating, error) {
 	for cur.Next(ctx) {
 		var r Rating
 		if err := cur.Decode(&r); err != nil {
-			log.Println("error decoding into user struct", err)
-			return nil, err
+			return nil, NewErrorf("error decoding into user struct: %s", err)
 		}
 
 		ratings = append(ratings, &r)
@@ -57,20 +56,68 @@ func FindRatings(db *DB, params RatingParams) ([]*Rating, error) {
 	return ratings, nil
 }
 
+// FindRatingExists checks if a given document exists within the db
+func FindRatingExists(db *DB, params *RatingParams) (bool, error) {
+	coll := db.MongoClient.Collection("ratings")
+
+	doc := coll.FindOne(context.Background(), params.Filter)
+	if doc.Err() != nil {
+		if doc.Err() == mongo.ErrNoDocuments {
+			return false, nil
+		}
+		log.Printf("error looking up rating: %s \n", doc.Err())
+		return false, doc.Err()
+	}
+
+	return true, nil
+}
+
 // Save inserts a new like entry to the database
 func (r *Rating) Save(db *DB) error {
 	coll := db.MongoClient.Collection("ratings")
 	ctx := context.Background()
 
+	// create unique ID and set createdDate
 	r.ID = primitive.NewObjectID().Hex()
 	r.CreatedDate = time.Now()
 
-	// TODO: make sure that like doesn't already exist...
+	filter := &RatingParams{
+		Filter: &Rating{
+			FromUserID: r.FromUserID,
+			ToUserID:   r.ToUserID,
+			Type:       r.Type,
+		},
+	}
 
-	_, err := coll.InsertOne(ctx, r)
+	// check if the rating exists before inserting a new one
+	exists, err := FindRatingExists(db, filter)
 	if err != nil {
+		return err
+	}
+
+	// don't save new entry if it already exists.
+	if exists {
+		return nil
+	}
+
+	// otherwise insert a new one
+	if _, err := coll.InsertOne(ctx, r); err != nil {
 		log.Printf("error creating a new like: %s\n", err)
 		return err
+	}
+
+	// if it was a block entry, from user A to B, remove user A's LIKE to user B, and vice versa
+	if r.Type == BLOCK {
+		filter.Filter.Type = LIKE
+		if _, err := coll.DeleteOne(ctx, filter); err != nil {
+			return NewErrorf("error deleting like entry: %s", err)
+		}
+
+		// swap fromUserId with toUserId
+		filter.Filter.FromUserID, filter.Filter.ToUserID = filter.Filter.ToUserID, filter.Filter.FromUserID
+		if _, err := coll.DeleteOne(ctx, filter); err != nil {
+			return NewErrorf("error deleting like entry: %s", err)
+		}
 	}
 
 	return nil

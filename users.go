@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -10,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// User holds information related to the user collection
 type User struct {
 	Age         int       `json:"age,omitempty" bson:"age,omitempty"`
 	Bio         string    `json:"bio,omitempty" bson:"bio,omitempty"`
@@ -30,7 +30,7 @@ func FindAllUsers(db *DB) ([]*User, error) {
 	cur, err := coll.Find(ctx, filter)
 
 	if err != nil {
-		log.Println("error finding users from mongo:", err)
+		err = NewErrorf("error finding users from mongo: %s", err)
 		return nil, err
 	}
 
@@ -39,7 +39,7 @@ func FindAllUsers(db *DB) ([]*User, error) {
 	for cur.Next(ctx) {
 		var u User
 		if err := cur.Decode(&u); err != nil {
-			log.Println("error decoding into user struct", err)
+			err = NewErrorf("error decoding into user struct: %s", err)
 			return nil, err
 		}
 
@@ -47,48 +47,33 @@ func FindAllUsers(db *DB) ([]*User, error) {
 	}
 
 	if err := cur.Err(); err != nil {
-		log.Println("mongo error", err)
+		err = NewErrorf("mongo error: %s", err)
 		return nil, err
 	}
 
 	return users, nil
 }
 
-// helper function to do simple id lookups
-func findByID(db *DB, collection, fieldName, id string) (*mongo.SingleResult, error) {
-	coll := db.MongoClient.Collection(collection)
-	ctx := context.Background()
+// FindUserById lookup user by id
+func FindUserByID(db *DB, id string) (*User, error) {
+	coll := db.MongoClient.Collection("users")
 
 	filter := bson.M{
-		fieldName: id,
+		"_id": id,
 	}
 
-	doc := coll.FindOne(ctx, filter)
+	doc := coll.FindOne(context.Background(), filter)
 	if doc.Err() != nil {
-		log.Printf("error looking up %s %s: %s \n", collection, id, doc.Err())
-
 		if doc.Err() == mongo.ErrNoDocuments {
 			// document not found, not an actual error
 			return nil, nil
 		}
-		return nil, doc.Err()
-	}
-
-	return doc, nil
-}
-
-// FindUserById lookup user by id
-func FindUserByID(db *DB, id string) (*User, error) {
-	doc, err := findByID(db, "users", "_id", id)
-	if err != nil || doc == nil {
-		// if it was a 404, err would also be nil
-		return nil, err
+		return nil, NewErrorf("error looking up user %s: %s", id, doc.Err())
 	}
 
 	var u User
 	if err := doc.Decode(&u); err != nil {
-		log.Printf("error decoding user %s into struct: %s \n", id, err)
-		return nil, err
+		return nil, NewErrorf("error decoding user %s into struct: %s", id, err)
 	}
 
 	return &u, nil
@@ -96,8 +81,9 @@ func FindUserByID(db *DB, id string) (*User, error) {
 
 // FindIncomingLikes finds all the users who have liked the given userId
 func FindIncomingLikes(db *DB, userId string) ([]*User, error) {
-	p := RatingParams{
-		Filter: Rating{
+	// find likes where toUserId is this user
+	p := &RatingParams{
+		Filter: &Rating{
 			ToUserID: userId,
 			Type:     LIKE,
 		},
@@ -129,6 +115,52 @@ func FindIncomingLikes(db *DB, userId string) ([]*User, error) {
 	return users, nil
 }
 
+// FindMatches gets all the matches this user has
+func FindMatches(db *DB, userId string) ([]*User, error) {
+	// look up everyone this user likes
+	p := &RatingParams{
+		Filter: &Rating{
+			FromUserID: userId,
+			Type:       LIKE,
+		},
+	}
+
+	myLikes, err := FindRatings(db, p)
+	if err != nil {
+		return nil, err
+	}
+
+	// find who likes this user
+	p.Filter.FromUserID = ""
+	p.Filter.ToUserID = userId
+
+	incomingLikes, err := FindRatings(db, p)
+	if err != nil {
+		return nil, err
+	}
+
+	// hold ids of outgoing likes
+	m := make(map[string]bool)
+	for _, v := range myLikes {
+		m[v.ToUserID] = true
+	}
+
+	matches := make([]*User, 0)
+
+	// loop through incoming likes, find common ids against outgoing likes and look up the user
+	for _, v := range incomingLikes {
+		if _, ok := m[v.FromUserID]; ok {
+			u, err := FindUserByID(db, v.FromUserID)
+			if err != nil {
+				return nil, err
+			}
+			matches = append(matches, u)
+		}
+	}
+
+	return matches, nil
+}
+
 // Edit overrides user data with the incoming values
 func (u *User) Edit(db *DB) (*User, error) {
 	coll := db.MongoClient.Collection("users")
@@ -138,10 +170,12 @@ func (u *User) Edit(db *DB) (*User, error) {
 		"_id": u.ID,
 	}
 
+	// only set fields that contain a value
 	update := bson.M{
 		"$set": u,
 	}
 
+	// update and return the updated document
 	after := options.After
 	opts := &options.FindOneAndUpdateOptions{
 		ReturnDocument: &after,
@@ -152,14 +186,12 @@ func (u *User) Edit(db *DB) (*User, error) {
 		if doc.Err() == mongo.ErrNoDocuments {
 			return nil, nil
 		}
-		log.Printf("error updating user %s: %s \n", u.ID, doc.Err())
-		return nil, doc.Err()
+		return nil, NewErrorf("error updating user %s: %s", u.ID, doc.Err())
 	}
 
 	var user User
 	if err := doc.Decode(&user); err != nil {
-		log.Printf("error decoding user %s: %s", u.ID, err)
-		return nil, err
+		return nil, NewErrorf("error decoding user %s: %s", u.ID, err)
 	}
 
 	return &user, nil

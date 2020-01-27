@@ -1,9 +1,11 @@
+// package main is a small API that allows users to see and interact with each other
 package main
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -13,13 +15,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-/**
-Seeing and interacting with recommendations of potential matches
-Seeing and interacting with others who have already liked you
-Seeing and interacting with existing matches
-Profile and account editing
-*/
-
+// appContext holds application level config
 type appContext struct {
 	DB *DB
 }
@@ -44,6 +40,7 @@ func main() {
 	r.GET("/users/:id/likes", app.getIncomingLikes)
 	r.PUT("/users/:id", app.editUser)
 	r.POST("/users/:id/ratings", app.newRating)
+	r.GET("/users/:id/matches", app.getMatches)
 
 	err := r.Run(fmt.Sprintf(":%s", os.Getenv("PORT")))
 	if err != nil {
@@ -65,7 +62,7 @@ func (app *appContext) getAllUsers(c *gin.Context) {
 	return
 }
 
-// get incoming user likes for a particular user id
+// get all incoming likes for a particular user
 func (app *appContext) getIncomingLikes(c *gin.Context) {
 	userId := c.Param("id")
 
@@ -87,8 +84,11 @@ func (app *appContext) editUser(c *gin.Context) {
 
 	var u User
 	if err := c.ShouldBindJSON(&u); err != nil {
-		log.Printf("error reading user edit data: %s\n", err)
-		errorResponse(c, http.StatusInternalServerError, err)
+		if err == io.EOF {
+			errorResponse(c, http.StatusBadRequest, NewErrorf("invalid request body: %s", err))
+			return
+		}
+		errorResponse(c, http.StatusInternalServerError, NewErrorf("error binding to user struct: %s", err))
 		return
 	}
 
@@ -121,8 +121,7 @@ func (app *appContext) newRating(c *gin.Context) {
 	var r Rating
 
 	if err := c.ShouldBindJSON(&r); err != nil {
-		log.Printf("error binding data to Rating object %s\n", err)
-		errorResponse(c, http.StatusInternalServerError, err)
+		errorResponse(c, http.StatusInternalServerError, NewErrorf("error binding data to Rating object %s", err))
 		return
 	}
 
@@ -152,6 +151,22 @@ func (app *appContext) newRating(c *gin.Context) {
 	return
 }
 
+// gets users who have been matched up to this userId
+func (app *appContext) getMatches(c *gin.Context) {
+	id := c.Param("id")
+
+	users, err := FindMatches(app.DB, id)
+	if err != nil {
+		errorResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": users,
+	})
+	return
+}
+
 // helper function to return 500 errors
 func errorResponse(c *gin.Context, statusCode int, err error) {
 	c.AbortWithStatusJSON(statusCode, gin.H{
@@ -165,7 +180,9 @@ func prettyPrint(i interface{}) {
 	fmt.Println(string(b))
 }
 
-// in order to do matches... each of them must like each other.
-// jennifer likes michael
-// michael likes jennifer
-// how do i know its a match?
+// NewError will log and return a new instance of error
+func NewErrorf(format string, v ...interface{}) error {
+	msg := fmt.Sprintf(format, v...)
+	log.Println(msg)
+	return errors.New(msg)
+}
