@@ -27,7 +27,7 @@ func main() {
 	}
 
 	// setup app config
-	app := appContext{
+	app := &appContext{
 		DB: NewDB(),
 	}
 
@@ -35,6 +35,15 @@ func main() {
 	PopulateDatabase(app.DB)
 
 	// register handlers
+	r := setupRouter(app)
+
+	err := r.Run(fmt.Sprintf(":%s", os.Getenv("PORT")))
+	if err != nil {
+		log.Fatal("error running server ", err)
+	}
+}
+
+func setupRouter(app *appContext) *gin.Engine {
 	r := gin.Default()
 	r.GET("/users", app.getAllUsers)
 	r.GET("/users/:id/likes", app.getIncomingLikes)
@@ -42,10 +51,7 @@ func main() {
 	r.POST("/users/:id/ratings", app.newRating)
 	r.GET("/users/:id/matches", app.getMatches)
 
-	err := r.Run(fmt.Sprintf(":%s", os.Getenv("PORT")))
-	if err != nil {
-		log.Fatal("error running server ", err)
-	}
+	return r
 }
 
 // see all users that exist within db. helps to get user ids for testing

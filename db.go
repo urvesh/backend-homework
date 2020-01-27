@@ -67,7 +67,33 @@ func PopulateDatabase(db *DB) {
 		return
 	}
 
-	users := []*User{
+	users := createUserData()
+	ui := make([]interface{}, 0, len(users))
+
+	for _, v := range users {
+		ui = append(ui, v)
+	}
+
+	if _, err := usersColl.InsertMany(ctx, ui); err != nil {
+		log.Fatal("error inserting users: ", err)
+	}
+
+	likes := createRatingsData()
+	li := make([]interface{}, 0, len(likes))
+
+	for _, v := range likes {
+		li = append(li, v)
+	}
+
+	ratingsColl := db.MongoClient.Collection("ratings")
+	if _, err := ratingsColl.InsertMany(ctx, li); err != nil {
+		log.Fatal("error inserting likes: ", err)
+	}
+}
+
+// sample user data
+func createUserData() []*User {
+	return []*User{
 		{
 			Age:         30,
 			Bio:         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -117,24 +143,17 @@ func PopulateDatabase(db *DB) {
 			Name:        "Andrew",
 		},
 	}
+}
 
-	ui := make([]interface{}, 0, len(users))
-
-	for _, v := range users {
-		ui = append(ui, v)
-	}
-
-	if _, err := usersColl.InsertMany(ctx, ui); err != nil {
-		log.Fatal("error inserting users: ", err)
-	}
-
+// sample ratings data
+func createRatingsData() []*Rating {
 	// Bob like Susan
 	// Bob likes Michael
 	// Alexis likes Michael
 	// Alexis likes Andrew
 	// {Everyone} likes Jennifer
 	// Jennifer likes Michael (match)
-	likes := []*Rating{
+	return []*Rating{
 		{
 			CreatedDate: time.Now(),
 			FromUserID:  "5e2e39ee290f5a56ffda9ed5",
@@ -205,16 +224,5 @@ func PopulateDatabase(db *DB) {
 			ToUserID:    "5e2e39ee290f5a56ffda9ed5",
 			Type:        LIKE,
 		},
-	}
-
-	li := make([]interface{}, 0, len(likes))
-
-	for _, v := range likes {
-		li = append(li, v)
-	}
-
-	ratingsColl := db.MongoClient.Collection("ratings")
-	if _, err := ratingsColl.InsertMany(ctx, li); err != nil {
-		log.Fatal("error inserting likes: ", err)
 	}
 }

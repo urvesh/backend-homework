@@ -29,13 +29,17 @@ sudo yum install -y golang
 ```
 
 To run process in background:
+https://linuxhandbook.com/run-process-background/
 ```bash
-
+make run &
+Ctrl + C
 ```
 
 To kill background process:
 ```bash
-
+jobs
+fg
+Ctrl + C
 ```
 
 ## Starting Data
