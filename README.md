@@ -16,11 +16,8 @@ Mongo conf location:
 `/usr/local/etc/mongod.conf`
 
 
-### Starting Data
 
-
-
-### EC2 Setup Notes
+## EC2 Setup Notes
 
 https://docs.mongodb.com/manual/tutorial/install-mongodb-on-amazon/
 https://hackernoon.com/deploying-a-go-application-on-aws-ec2-76390c09c2c5
@@ -31,4 +28,47 @@ sudo yum install -y git
 sudo yum install -y golang
 ```
 
+To run process in background:
+```bash
+
+```
+
+To kill background process:
+```bash
+
+```
+
+## Starting Data
+#### Users
+
+| _id                      | name     |
+| ------------------------ | -------- |
+| 5e2e39ee290f5a56ffda9ed5 | Jennifer |
+| 5e2e39ee290f5a56ffda9ed6 | Bob      |
+| 5e2e39ee290f5a56ffda9ed7 | Susan    |
+| 5e2e39ee290f5a56ffda9ed8 | Michael  |
+| 5e2e39ee290f5a56ffda9ed9 | Alexis   |
+| 5e2e39ee290f5a56ffda9eda | Andrew   |
+
+#### Ratings
+| fromUserId               | toUserId                 | type |
+| ------------------------ | ------------------------ | ---- |
+| 5e2e39ee290f5a56ffda9ed5 | 5e2e39ee290f5a56ffda9ed8 | LIKE |
+| 5e2e39ee290f5a56ffda9ed6 | 5e2e39ee290f5a56ffda9ed5 | LIKE |
+| 5e2e39ee290f5a56ffda9ed6 | 5e2e39ee290f5a56ffda9ed7 | LIKE |
+| 5e2e39ee290f5a56ffda9ed6 | 5e2e39ee290f5a56ffda9ed8 | LIKE |
+| 5e2e39ee290f5a56ffda9ed7 | 5e2e39ee290f5a56ffda9ed5 | LIKE |
+| 5e2e39ee290f5a56ffda9ed8 | 5e2e39ee290f5a56ffda9ed5 | LIKE |
+| 5e2e39ee290f5a56ffda9ed9 | 5e2e39ee290f5a56ffda9ed5 | LIKE |
+| 5e2e39ee290f5a56ffda9ed9 | 5e2e39ee290f5a56ffda9ed8 | LIKE |
+| 5e2e39ee290f5a56ffda9ed9 | 5e2e39ee290f5a56ffda9eda | LIKE |
+| 5e2e39ee290f5a56ffda9eda | 5e2e39ee290f5a56ffda9ed5 | LIKE |
+
+Notes:
+* Jennifer likes Michael (match)
+* Bob likes Jennifer, Susan, and Michael
+* Susan likes Jennifer
+* Michael likes Jennifer
+* Alexis likes Jennifer, Michael and Andrew
+* Andrew likes Jennifer
 
