@@ -33,6 +33,8 @@ https://linuxhandbook.com/run-process-background/
 ```bash
 make run &
 Ctrl + C
+
+nohup make run &
 ```
 
 To kill background process:
@@ -40,6 +42,9 @@ To kill background process:
 jobs
 fg
 Ctrl + C
+
+ps -aux | grep backend
+kill -9 pid
 ```
 
 ## Starting Data
