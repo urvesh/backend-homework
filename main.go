@@ -91,7 +91,7 @@ func (app *appContext) editUser(c *gin.Context) {
 	var u User
 	if err := c.ShouldBindJSON(&u); err != nil {
 		if err == io.EOF {
-			errorResponse(c, http.StatusBadRequest, NewErrorf("invalid request body: %s", err))
+			errorResponse(c, http.StatusBadRequest, NewErrorf("invalid request body. allowed one of more fields: age, bio, jobTitle, name", err))
 			return
 		}
 		errorResponse(c, http.StatusInternalServerError, NewErrorf("error binding to user struct: %s", err))
